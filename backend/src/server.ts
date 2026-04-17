@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import multer from "multer";
 import { env } from "./config/env";
+import { jobsRouter } from "./routes/jobs";
 import { processAudioRouter } from "./routes/processAudio";
 import { sendEmailRouter } from "./routes/sendEmail";
 import { summaryRouter } from "./routes/summary";
@@ -20,6 +21,7 @@ app.get("/health", (_request, response) => {
 app.use("/summary", summaryRouter);
 app.use("/sendEmail", sendEmailRouter);
 app.use("/processAudio", processAudioRouter);
+app.use("/jobs", jobsRouter);
 
 app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
   if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {

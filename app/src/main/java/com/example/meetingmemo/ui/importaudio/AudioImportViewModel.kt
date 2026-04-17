@@ -18,12 +18,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+enum class AudioProcessStep(val label: String) {
+    UPLOADING("파일 업로드"),
+    TRANSCRIBING("음성 인식"),
+    SUMMARIZING("AI 요약 생성"),
+}
+
 data class AudioImportUiState(
     val selectedFileName: String = "",
     val selectedFileSizeLabel: String = "",
     val selectedFileMimeType: String = "",
     val isReadyToProcess: Boolean = false,
     val importState: UiState<Unit> = UiState.Idle,
+    val processStep: AudioProcessStep? = null,
     val importedDraft: ImportedAudioDraft? = null,
 )
 
@@ -85,6 +92,7 @@ class AudioImportViewModel @Inject constructor(
                 isReadyToProcess = true,
                 importedDraft = null,
                 importState = UiState.Idle,
+                processStep = null,
             )
         }
     }
@@ -99,7 +107,13 @@ class AudioImportViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(importState = UiState.Loading, importedDraft = null) }
+            _uiState.update {
+                it.copy(
+                    importState = UiState.Loading,
+                    processStep = AudioProcessStep.UPLOADING,
+                    importedDraft = null,
+                )
+            }
             runCatching {
                 val bytes = appContext.contentResolver.openInputStream(uri)?.use { input ->
                     input.readBytes()
@@ -113,6 +127,9 @@ class AudioImportViewModel @Inject constructor(
                     fileName = uiState.value.selectedFileName,
                     mimeType = uiState.value.selectedFileMimeType.ifBlank { "audio/*" },
                     bytes = bytes,
+                    onProgress = { step ->
+                        _uiState.update { it.copy(processStep = step) }
+                    },
                 )
 
                 ImportedAudioDraft(
@@ -127,6 +144,7 @@ class AudioImportViewModel @Inject constructor(
                     it.copy(
                         importedDraft = draft,
                         importState = UiState.Success(Unit),
+                        processStep = null,
                     )
                 }
             }.onFailure { throwable ->
@@ -135,6 +153,7 @@ class AudioImportViewModel @Inject constructor(
                         importState = UiState.Error(
                             throwable.message ?: "오디오 파일 처리에 실패했습니다.",
                         ),
+                        processStep = null,
                     )
                 }
             }

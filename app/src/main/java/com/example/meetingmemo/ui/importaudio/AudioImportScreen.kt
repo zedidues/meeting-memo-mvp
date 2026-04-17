@@ -5,9 +5,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -26,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -97,6 +100,7 @@ fun AudioImportScreen(
             Button(
                 onClick = { openDocumentLauncher.launch(arrayOf("audio/*")) },
                 modifier = Modifier.fillMaxWidth(),
+                enabled = uiState.importState !is UiState.Loading,
             ) {
                 Text("음성 파일 선택")
             }
@@ -132,11 +136,14 @@ fun AudioImportScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = uiState.isReadyToProcess && uiState.importState !is UiState.Loading,
             ) {
-                if (uiState.importState is UiState.Loading) {
-                    CircularProgressIndicator(strokeWidth = 2.dp)
-                } else {
-                    Text("파일 업로드 후 정리하기")
-                }
+                Text(
+                    if (uiState.importState is UiState.Loading) "처리 중..." else "파일 업로드 후 정리하기"
+                )
+            }
+
+            val currentStep = uiState.processStep
+            if (uiState.importState is UiState.Loading && currentStep != null) {
+                ProcessingStepsCard(currentStep = currentStep)
             }
 
             uiState.importedDraft?.let { draft ->
@@ -175,5 +182,58 @@ fun AudioImportScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ProcessingStepsCard(currentStep: AudioProcessStep) {
+    val steps = AudioProcessStep.entries
+
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("처리 중...", style = MaterialTheme.typography.titleMedium)
+            steps.forEach { step ->
+                val isDone = step.ordinal < currentStep.ordinal
+                val isCurrent = step == currentStep
+                ProcessStepRow(label = step.label, isDone = isDone, isCurrent = isCurrent)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProcessStepRow(label: String, isDone: Boolean, isCurrent: Boolean) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        when {
+            isDone -> Text(
+                text = "✓",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            isCurrent -> CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+            )
+            else -> Text(
+                text = "○",
+                color = MaterialTheme.colorScheme.outline,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        Text(
+            text = if (isCurrent) "${label} 중..." else label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = when {
+                isDone -> MaterialTheme.colorScheme.primary
+                isCurrent -> MaterialTheme.colorScheme.onSurface
+                else -> MaterialTheme.colorScheme.outline
+            },
+        )
     }
 }
