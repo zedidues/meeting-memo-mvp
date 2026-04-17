@@ -10,9 +10,12 @@ import com.example.meetingmemo.domain.usecase.SendMemoEmailUseCase
 import com.example.meetingmemo.ui.common.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -54,6 +57,9 @@ class MemoDetailViewModel @Inject constructor(
     private val _emailState = MutableStateFlow<UiState<String>>(UiState.Idle)
     val emailSendState: StateFlow<UiState<String>> = _emailState.asStateFlow()
 
+    private val _snackbarMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val snackbarMessage: SharedFlow<String> = _snackbarMessage.asSharedFlow()
+
     fun updateEmailInput(value: String) {
         emailInput.update { value }
     }
@@ -61,6 +67,7 @@ class MemoDetailViewModel @Inject constructor(
     fun saveDefaultEmail() {
         viewModelScope.launch {
             userPreferencesRepository.setDefaultEmail(uiState.value.emailInput.trim())
+            _snackbarMessage.tryEmit("기본 이메일로 저장되었습니다.")
         }
     }
 

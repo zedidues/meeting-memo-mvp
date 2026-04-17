@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -40,19 +42,24 @@ fun MemoDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showDialog by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        viewModel.snackbarMessage.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
     LaunchedEffect(emailSendState) {
         when (val state = emailSendState) {
             is UiState.Success -> {
+                showDialog = false
                 snackbarHostState.showSnackbar(state.data)
                 viewModel.clearEmailState()
-                showDialog = false
             }
-
             is UiState.Error -> {
+                showDialog = false
                 snackbarHostState.showSnackbar(state.message)
                 viewModel.clearEmailState()
             }
-
             else -> Unit
         }
     }
@@ -60,6 +67,7 @@ fun MemoDetailScreen(
     if (showDialog) {
         SendEmailDialog(
             email = uiState.emailInput,
+            isSending = emailSendState is UiState.Loading,
             onEmailChange = viewModel::updateEmailInput,
             onDismiss = { showDialog = false },
             onSend = viewModel::sendEmail,
@@ -104,18 +112,16 @@ fun MemoDetailScreen(
         ) {
             Text(text = memo.title, style = MaterialTheme.typography.headlineSmall)
 
-            Text(text = "원문", style = MaterialTheme.typography.titleMedium)
-            Text(text = memo.rawText.ifBlank { "원문이 없습니다." })
-
             Text(text = "요약", style = MaterialTheme.typography.titleMedium)
             Text(text = memo.summaryText.ifBlank { "요약이 없습니다." })
 
             Button(
                 onClick = { showDialog = true },
                 modifier = Modifier.fillMaxWidth(),
+                enabled = emailSendState !is UiState.Loading,
             ) {
                 if (emailSendState is UiState.Loading) {
-                    CircularProgressIndicator(strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
                     Text("이메일 발송")
                 }
@@ -127,6 +133,11 @@ fun MemoDetailScreen(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
+
+            HorizontalDivider()
+
+            Text(text = "원문", style = MaterialTheme.typography.titleMedium)
+            Text(text = memo.rawText.ifBlank { "원문이 없습니다." })
         }
     }
 }

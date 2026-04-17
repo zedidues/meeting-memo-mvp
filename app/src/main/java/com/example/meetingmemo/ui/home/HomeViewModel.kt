@@ -20,7 +20,10 @@ class HomeViewModel @Inject constructor(
     memoRepository: MemoRepository,
 ) : ViewModel() {
     val uiState: StateFlow<HomeUiState> = memoRepository.observeMemos()
-        .map { HomeUiState(memos = it) }
+        .map { memos ->
+            val seen = mutableSetOf<String>()
+            HomeUiState(memos = memos.filter { memo -> seen.add(memo.rawText.trim()) })
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
