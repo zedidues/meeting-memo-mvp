@@ -9,10 +9,13 @@ import com.example.meetingmemo.domain.usecase.GenerateSummaryUseCase
 import com.example.meetingmemo.ui.common.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class RecordMemoUiState(
@@ -22,6 +25,8 @@ data class RecordMemoUiState(
     val actionItems: List<String> = emptyList(),
     val summaryState: UiState<Unit> = UiState.Idle,
     val saveState: UiState<Long> = UiState.Idle,
+    val isRecording: Boolean = false,
+    val interimText: String = "",
 )
 
 @HiltViewModel
@@ -32,6 +37,12 @@ class RecordMemoViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(RecordMemoUiState())
     val uiState: StateFlow<RecordMemoUiState> = _uiState.asStateFlow()
+
+    private var summaryTimerJob: Job? = null
+
+    companion object {
+        const val AUTO_SUMMARY_INTERVAL_MS = 60_000L
+    }
 
     init {
         viewModelScope.launch {
@@ -46,6 +57,28 @@ class RecordMemoViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun startRecording() {
+        _uiState.update { it.copy(isRecording = true, interimText = "") }
+        summaryTimerJob?.cancel()
+        summaryTimerJob = viewModelScope.launch {
+            while (isActive) {
+                delay(AUTO_SUMMARY_INTERVAL_MS)
+                if (_uiState.value.rawText.trim().length >= 20) {
+                    generateSummary()
+                }
+            }
+        }
+    }
+
+    fun stopRecording() {
+        summaryTimerJob?.cancel()
+        _uiState.update { it.copy(isRecording = false, interimText = "") }
+    }
+
+    fun updateInterimText(text: String) {
+        _uiState.update { it.copy(interimText = text) }
     }
 
     fun updateTitle(title: String) {
@@ -65,7 +98,7 @@ class RecordMemoViewModel @Inject constructor(
             val mergedText = listOf(state.rawText, text.trim())
                 .filter { it.isNotBlank() }
                 .joinToString(separator = "\n")
-            state.copy(rawText = mergedText)
+            state.copy(rawText = mergedText, interimText = "")
         }
     }
 
@@ -127,6 +160,11 @@ class RecordMemoViewModel @Inject constructor(
 
     fun clearSummaryState() {
         _uiState.update { it.copy(summaryState = UiState.Idle) }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        summaryTimerJob?.cancel()
     }
 
     private fun buildFallbackTitle(rawText: String): String {
