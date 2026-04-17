@@ -1,4 +1,13 @@
+import nodemailer from "nodemailer";
 import { env } from "../config/env";
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: env.gmailUser,
+    pass: env.gmailAppPassword,
+  },
+});
 
 export async function sendMemoEmail(params: {
   toEmail: string;
@@ -14,24 +23,12 @@ export async function sendMemoEmail(params: {
     <p>${escapeHtml(params.rawText).replace(/\n/g, "<br/>")}</p>
   `;
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${env.resendApiKey}`,
-    },
-    body: JSON.stringify({
-      from: env.resendFromEmail,
-      to: [params.toEmail],
-      subject: `[회의 메모] ${params.title}`,
-      html,
-    }),
+  await transporter.sendMail({
+    from: `"회의 메모" <${env.gmailUser}>`,
+    to: params.toEmail,
+    subject: `[회의 메모] ${params.title}`,
+    html,
   });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Resend request failed: ${errorBody}`);
-  }
 }
 
 function escapeHtml(value: string): string {

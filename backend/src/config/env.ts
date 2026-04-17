@@ -14,6 +14,6 @@ export const env = {
   sttApiKey: requireEnv("STT_API_KEY"),
   sttModel: process.env.STT_MODEL ?? "whisper-large-v3-turbo",
   sttApiBaseUrl: process.env.STT_API_BASE_URL ?? "https://api.groq.com/openai/v1",
-  resendApiKey: requireEnv("RESEND_API_KEY"),
-  resendFromEmail: requireEnv("RESEND_FROM_EMAIL"),
+  gmailUser: requireEnv("GMAIL_USER"),
+  gmailAppPassword: requireEnv("GMAIL_APP_PASSWORD"),
 };
