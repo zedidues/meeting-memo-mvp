@@ -9,8 +9,8 @@ function requireEnv(name: string): string {
 export const env = {
   port: Number(process.env.PORT ?? 3000),
   llmApiKey: requireEnv("LLM_API_KEY"),
-  llmModel: process.env.LLM_MODEL ?? "gpt-4.1-mini",
-  llmApiBaseUrl: process.env.LLM_API_BASE_URL ?? "https://api.openai.com/v1",
+  llmModel: process.env.LLM_MODEL ?? "llama-3.3-70b-versatile",
+  llmApiBaseUrl: process.env.LLM_API_BASE_URL ?? "https://api.groq.com/openai/v1",
   sttApiKey: requireEnv("STT_API_KEY"),
   sttModel: process.env.STT_MODEL ?? "whisper-large-v3-turbo",
   sttApiBaseUrl: process.env.STT_API_BASE_URL ?? "https://api.groq.com/openai/v1",
