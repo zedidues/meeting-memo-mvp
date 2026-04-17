@@ -1,0 +1,10 @@
+/.gradle/
+/local.properties
+/build/
+/app/build/
+/backend/dist/
+/backend/node_modules/
+/functions/lib/
+/functions/node_modules/
+*.iml
+.idea/
