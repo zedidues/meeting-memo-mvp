@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -64,8 +66,9 @@ fun AudioImportScreen(
         }
     }
 
+    // 파일 유효성 오류(파일 선택 전)만 스낵바로 표시
     LaunchedEffect(uiState.importState) {
-        if (uiState.importState is UiState.Error) {
+        if (uiState.importState is UiState.Error && !uiState.isReadyToProcess) {
             snackbarHostState.showSnackbar((uiState.importState as UiState.Error).message)
             viewModel.clearImportState()
         }
@@ -141,9 +144,19 @@ fun AudioImportScreen(
                 )
             }
 
+            // 처리 진행 단계 표시
             val currentStep = uiState.processStep
             if (uiState.importState is UiState.Loading && currentStep != null) {
                 ProcessingStepsCard(currentStep = currentStep)
+            }
+
+            // 처리 오류 + 재시도 버튼
+            if (uiState.importState is UiState.Error && uiState.isReadyToProcess) {
+                ProcessingErrorCard(
+                    message = (uiState.importState as UiState.Error).message,
+                    onRetry = viewModel::processSelectedAudio,
+                    onDismiss = viewModel::clearImportState,
+                )
             }
 
             uiState.importedDraft?.let { draft ->
@@ -156,16 +169,23 @@ fun AudioImportScreen(
                             text = draft.title,
                             style = MaterialTheme.typography.titleLarge,
                         )
-                        Text(text = "전사 원문", style = MaterialTheme.typography.titleMedium)
-                        Text(text = draft.rawText)
+
                         Text(text = "요약", style = MaterialTheme.typography.titleMedium)
                         Text(text = draft.summaryText)
+
                         if (draft.actionItems.isNotEmpty()) {
                             Text(
-                                text = "액션 아이템: ${draft.actionItems.joinToString()}",
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = "내가 해야할 것",
+                                style = MaterialTheme.typography.titleMedium,
                             )
+                            draft.actionItems.forEachIndexed { index, item ->
+                                Text(
+                                    text = "${index + 1}. $item",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
                         }
+
                         Button(
                             onClick = {
                                 coroutineScope.launch {
@@ -227,7 +247,7 @@ private fun ProcessStepRow(label: String, isDone: Boolean, isCurrent: Boolean) {
             )
         }
         Text(
-            text = if (isCurrent) "${label} 중..." else label,
+            text = if (isCurrent) "$label 중..." else label,
             style = MaterialTheme.typography.bodyMedium,
             color = when {
                 isDone -> MaterialTheme.colorScheme.primary
@@ -235,5 +255,51 @@ private fun ProcessStepRow(label: String, isDone: Boolean, isCurrent: Boolean) {
                 else -> MaterialTheme.colorScheme.outline
             },
         )
+    }
+}
+
+@Composable
+private fun ProcessingErrorCard(
+    message: String,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "처리 실패",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("닫기")
+                }
+                Button(
+                    onClick = onRetry,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text("다시 시도")
+                }
+            }
+        }
     }
 }
